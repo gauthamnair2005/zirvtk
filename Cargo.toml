@@ -1,0 +1,23 @@
+[package]
+name = "zirvtk"
+version = "0.1.0"
+edition = "2021"
+description = "Zirvium GUI Toolkit — Rust widget library with C FFI"
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
+[dependencies]
+bitflags = { version = "2", default-features = false, optional = true }
+
+[build-dependencies]
+cc = "1"
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[example]]
+name = "demo_rust"
+path = "examples/demo_rust.rs"
