@@ -1,5 +1,6 @@
 use crate::canvas::Canvas;
 use crate::color::Color;
+use crate::font;
 use crate::rect::Rect;
 use crate::widget::{Event, EventResult, Widget};
 
@@ -47,8 +48,12 @@ impl Widget for Button {
     }
 
     fn min_size(&self) -> (u32, u32) {
-        let text_w = self.text.len() as u32 * 9; // FONT_W + 1
-        (text_w.max(64) + 16, 32)
+        let text_w = font::text_width(self.text);
+        let pad_x = font::FONT_W + 6;
+        let pad_y = font::FONT_H / 2 + 4;
+        let w = text_w.max(64) + pad_x * 2;
+        let h = font::line_height() + pad_y * 2;
+        (w, h.max(28))
     }
 
     fn set_pos(&mut self, x: i32, y: i32) {
@@ -70,16 +75,17 @@ impl Widget for Button {
             self.bg
         };
         let r = self.rect;
-        canvas.fill_rect(r.x, r.y, r.w, r.h, bg);
-        canvas.hline(r.x, r.y, r.w, self.border);
-        canvas.hline(r.x, r.y + r.h as i32 - 1, r.w, self.border);
-        canvas.vline(r.x, r.y, r.h, self.border);
-        canvas.vline(r.x + r.w as i32 - 1, r.y, r.h, self.border);
+        let min_side = r.w.min(r.h).max(1);
+        let scale = (min_side / 120).max(1).min(3) as i32;
+        let radius = (font::FONT_H as i32 / 2 + 2 * scale) as u32;
+        canvas.fill_round_rect(r.x, r.y, r.w, r.h, radius, bg);
+        canvas.stroke_round_rect(r.x, r.y, r.w, r.h, radius, self.border);
 
         // Centered text
-        let text_w = self.text.len() as i32 * 9;
+        let text_w = font::text_width(self.text) as i32;
+        let text_h = font::line_height() as i32;
         let tx = r.x + (r.w as i32 - text_w) / 2;
-        let ty = r.y + (r.h as i32 - 13) / 2;
+        let ty = r.y + (r.h as i32 - text_h) / 2;
         canvas.draw_text(tx, ty, self.text, self.fg);
     }
 

@@ -3,6 +3,7 @@
 use alloc::vec::Vec;
 use crate::color::Color;
 use crate::font::{self, FONT_H, FONT_W};
+use core::cmp::min;
 
 /// Software pixel canvas backed by `width × height × 4` bytes of ARGB8888 data.
 pub struct Canvas {
@@ -10,6 +11,35 @@ pub struct Canvas {
     pub height: u32,
     pub stride: u32,
     pixels: Vec<u32>, // ARGB8888, row-major
+}
+
+fn in_round_rect(px: i32, py: i32, x: i32, y: i32, w: u32, h: u32, radius: u32) -> bool {
+    if w == 0 || h == 0 {
+        return false;
+    }
+    let w_i = w as i32;
+    let h_i = h as i32;
+    if px < x || py < y || px >= x + w_i || py >= y + h_i {
+        return false;
+    }
+    let r = min(radius, (min(w, h) / 2)) as i32;
+    if r <= 0 {
+        return true;
+    }
+    let left = x + r;
+    let right = x + w_i - r - 1;
+    let top = y + r;
+    let bottom = y + h_i - r - 1;
+
+    if (px >= left && px <= right) || (py >= top && py <= bottom) {
+        return true;
+    }
+
+    let cx = if px < left { left } else { right };
+    let cy = if py < top { top } else { bottom };
+    let dx = px - cx;
+    let dy = py - cy;
+    dx * dx + dy * dy <= r * r
 }
 
 impl Canvas {
@@ -98,6 +128,74 @@ impl Canvas {
                     continue;
                 }
                 self.pixels[base + (px as usize)] = c;
+            }
+        }
+
+        /// Fill a rounded rectangle.
+        pub fn fill_round_rect(
+            &mut self,
+            x: i32,
+            y: i32,
+            w: u32,
+            h: u32,
+            radius: u32,
+            color: Color,
+        ) {
+            let c = color.to_u32();
+            let r = min(radius, min(w, h) / 2);
+            for row in 0..h as i32 {
+                let py = y + row;
+                if py < 0 || py as u32 >= self.height {
+                    continue;
+                }
+                let base = (py as usize) * (self.stride as usize);
+                for col in 0..w as i32 {
+                    let px = x + col;
+                    if px < 0 || px as u32 >= self.width {
+                        continue;
+                    }
+                    if !in_round_rect(px, py, x, y, w, h, r) {
+                        continue;
+                    }
+                    self.pixels[base + (px as usize)] = c;
+                }
+            }
+        }
+
+        /// Stroke a rounded rectangle (1px border).
+        pub fn stroke_round_rect(
+            &mut self,
+            x: i32,
+            y: i32,
+            w: u32,
+            h: u32,
+            radius: u32,
+            color: Color,
+        ) {
+            if w < 2 || h < 2 {
+                return;
+            }
+            let r = min(radius, min(w, h) / 2);
+            let inner_r = r.saturating_sub(1);
+            for row in 0..h as i32 {
+                let py = y + row;
+                if py < 0 || py as u32 >= self.height {
+                    continue;
+                }
+                let base = (py as usize) * (self.stride as usize);
+                for col in 0..w as i32 {
+                    let px = x + col;
+                    if px < 0 || px as u32 >= self.width {
+                        continue;
+                    }
+                    if !in_round_rect(px, py, x, y, w, h, r) {
+                        continue;
+                    }
+                    if in_round_rect(px, py, x + 1, y + 1, w - 2, h - 2, inner_r) {
+                        continue;
+                    }
+                    self.pixels[base + (px as usize)] = color.to_u32();
+                }
             }
         }
     }

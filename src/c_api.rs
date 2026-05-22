@@ -8,6 +8,7 @@ use crate::app::App;
 use crate::button::Button;
 use crate::canvas::Canvas;
 use crate::label::Label;
+use crate::panel::Panel;
 use crate::window::Window;
 use crate::Widget;
 
@@ -18,6 +19,7 @@ pub enum ZtkWidget {}
 pub enum ZtkButton {}
 pub enum ZtkLabel {}
 pub enum ZtkWindow {}
+pub enum ZtkPanel {}
 
 // ── App ───────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,19 @@ pub extern "C" fn ztk_window_create(
     };
     let win = Window::new(title_static, child);
     let widget: Box<dyn Widget> = Box::new(win);
+    Box::into_raw(Box::new(widget)) as *mut ZtkWidget
+}
+
+#[no_mangle]
+pub extern "C" fn ztk_panel_create(child: *mut ZtkWidget) -> *mut ZtkWidget {
+    let child: Option<Box<dyn Widget>> = if child.is_null() {
+        None
+    } else {
+        let b = unsafe { Box::from_raw(child as *mut Box<dyn Widget>) };
+        Some(*b)
+    };
+    let panel = Panel::new(child);
+    let widget: Box<dyn Widget> = Box::new(panel);
     Box::into_raw(Box::new(widget)) as *mut ZtkWidget
 }
 

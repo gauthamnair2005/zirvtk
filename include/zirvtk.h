@@ -22,6 +22,7 @@ void       ztk_app_destroy(ZtkApp *app);
 ZtkWidget* ztk_button_create(const char *text);
 ZtkWidget* ztk_label_create(const char *text);
 ZtkWidget* ztk_window_create(const char *title, ZtkWidget *content);
+ZtkWidget* ztk_panel_create(ZtkWidget *child);
 
 /* ── Widget helpers ─────────────────────────────────────────────────────── */
 void       ztk_widget_set_pos(ZtkWidget *w, int x, int y);

@@ -11,7 +11,8 @@ int main(void) {
     if (!app) return 1;
 
     ZtkWidget *label = ztk_label_create("Hello from C!");
-    ZtkWidget *win   = ztk_window_create("C Demo", label);
+    ZtkWidget *panel = ztk_panel_create(label);
+    ZtkWidget *win   = ztk_window_create("C Demo", panel);
 
     ztk_app_set_root(app, win);
     ztk_app_run(app);

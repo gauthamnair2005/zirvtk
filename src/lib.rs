@@ -33,6 +33,9 @@ pub use button::Button;
 pub mod label;
 pub use label::Label;
 
+pub mod panel;
+pub use panel::Panel;
+
 pub mod window;
 pub use window::Window;
 

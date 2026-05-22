@@ -1,5 +1,6 @@
 use crate::canvas::Canvas;
 use crate::color::Color;
+use crate::font;
 use crate::rect::Rect;
 use crate::widget::{Event, EventResult, Widget};
 
@@ -37,7 +38,8 @@ impl Widget for Label {
     }
 
     fn min_size(&self) -> (u32, u32) {
-        (self.text.len() as u32 * 9, 16)
+        let text_w = font::text_width(self.text);
+        (text_w + 8, font::line_height() + 4)
     }
 
     fn set_pos(&mut self, x: i32, y: i32) {
@@ -54,7 +56,9 @@ impl Widget for Label {
         if let Some(bg) = self.bg {
             canvas.fill_rect(self.rect.x, self.rect.y, self.rect.w, self.rect.h, bg);
         }
-        canvas.draw_text(self.rect.x + 4, self.rect.y + 2, self.text, self.color);
+        let tx = self.rect.x + 4;
+        let ty = self.rect.y + ((self.rect.h as i32 - font::line_height() as i32) / 2).max(0);
+        canvas.draw_text(tx, ty, self.text, self.color);
     }
 
     fn handle_event(&mut self, _ev: &Event, _parent: Rect) -> EventResult {

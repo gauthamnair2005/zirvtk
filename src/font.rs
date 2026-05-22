@@ -2,6 +2,17 @@
 pub const FONT_W: u32 = 8;
 pub const FONT_H: u32 = 13;
 
+/// Return the pixel width of a string in the built-in font.
+pub fn text_width(text: &str) -> u32 {
+    let chars = text.chars().count() as u32;
+    chars * (FONT_W + 1)
+}
+
+/// Return the line height for the built-in font.
+pub fn line_height() -> u32 {
+    FONT_H + 3
+}
+
 /// Return the glyph bitmap for a character (or space for out-of-range).
 pub fn font_get(c: char) -> &'static [u8; FONT_H as usize] {
     let idx = (c as usize).wrapping_sub(32);
