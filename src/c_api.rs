@@ -59,6 +59,12 @@ pub extern "C" fn ztk_app_destroy(app: *mut ZtkApp) {
     }
 }
 
+/// Set system-wide performance mode.
+#[no_mangle]
+pub extern "C" fn ztk_set_perf_mode(mode: c_int) {
+    let _ = crate::Platform::set_perf_mode(mode != 0);
+}
+
 // ── Button ────────────────────────────────────────────────────────────────
 
 #[no_mangle]
@@ -145,4 +151,16 @@ pub extern "C" fn ztk_canvas_destroy(canvas: *mut ZtkCanvas) {
             let _ = Box::from_raw(canvas as *mut Canvas);
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn ztk_canvas_present_region(
+    canvas: *mut ZtkCanvas,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+) {
+    let canvas = unsafe { &mut *(canvas as *mut Canvas) };
+    canvas.present_region(x, y, w, h);
 }

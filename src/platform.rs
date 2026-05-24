@@ -101,6 +101,16 @@ impl Platform {
         unsafe { ffi::zf_present(&buf.raw) == 0 }
     }
 
+    /// Present a region of a buffer.
+    pub fn present_region(&self, buf: &DisplayBuffer, x: u32, y: u32, w: u32, h: u32) -> bool {
+        unsafe { ffi::zf_present_region(&buf.raw, x, y, w, h) == 0 }
+    }
+
+    /// Set performance mode (0 = standard/secure, 1 = high performance).
+    pub fn set_perf_mode(mode: bool) -> bool {
+        unsafe { ffi::zf_set_perf_mode(if mode { 1 } else { 0 }) == 0 }
+    }
+
     /// Set cursor position.
     pub fn set_cursor(&self, x: i32, y: i32) -> bool {
         unsafe { ffi::zf_set_cursor(x, y) == 0 }

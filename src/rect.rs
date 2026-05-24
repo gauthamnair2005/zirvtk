@@ -1,3 +1,5 @@
+use core::default::Default;
+
 /// 2D rectangle (integer coordinates).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rect {
@@ -5,6 +7,10 @@ pub struct Rect {
     pub y: i32,
     pub w: u32,
     pub h: u32,
+}
+
+impl Default for Rect {
+    fn default() -> Self { Self { x: 0, y: 0, w: 0, h: 0 } }
 }
 
 impl Rect {
