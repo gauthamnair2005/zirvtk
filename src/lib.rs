@@ -62,6 +62,7 @@ pub mod obj3d;
 #[cfg(feature = "alloc")]
 pub use obj3d::*;
 
+#[cfg(feature = "alloc")]
 mod c_api;
 #[cfg(feature = "alloc")]
 pub use c_api::*;
