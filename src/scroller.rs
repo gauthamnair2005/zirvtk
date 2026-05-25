@@ -89,7 +89,7 @@ impl Widget for TileScroller {
     fn handle_event(&mut self, ev: &Event, _parent: Rect) -> EventResult {
         let r = self.rect;
         match *ev {
-            Event::MouseMove { x, y: _y } => {
+            Event::MouseMove { x, .. } => {
                 if self.dragging {
                     let dx = x - self.drag_start_x;
                     let new_off = self.drag_start_offset + dx;
@@ -121,7 +121,7 @@ impl Widget for TileScroller {
                 }
                 EventResult::Ignored
             }
-            Event::MouseUp { x: _x, y: _y, .. } => {
+            Event::MouseUp { .. } => {
                 if self.dragging {
                     self.dragging = false;
                     return EventResult::Redraw;

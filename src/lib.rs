@@ -57,6 +57,11 @@ mod window;
 pub mod rawfb;
 
 #[cfg(feature = "alloc")]
+pub mod obj3d;
+
+#[cfg(feature = "alloc")]
+pub use obj3d::*;
+
 mod c_api;
 #[cfg(feature = "alloc")]
 pub use c_api::*;

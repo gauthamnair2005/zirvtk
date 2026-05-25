@@ -71,7 +71,6 @@ impl App {
 
     fn render_frame(&mut self) -> bool {
         let _info = self.platform.info();
-
         self.canvas.clear(Color::from_u32(0xFF000000));
         self.render_desktop_bg();
 
