@@ -56,6 +56,11 @@ void       ztk_fb_fill_gradient_v(uint32_t *fb, uint32_t w, uint32_t h,
 void       ztk_fb_draw_char(uint32_t *fb, uint32_t fb_w, uint32_t fb_h,
                             int x, int y, uint8_t c, uint32_t color);
 
+/* Draw a single character with configurable anti-aliasing (aa_level 0-255). */
+void       ztk_fb_draw_char_aa(uint32_t *fb, uint32_t fb_w, uint32_t fb_h,
+                               int x, int y, uint8_t c, uint32_t color,
+                               uint8_t aa_level);
+
 /* Draw a null-terminated text string. */
 void       ztk_fb_draw_text(uint32_t *fb, uint32_t fb_w, uint32_t fb_h,
                             int x, int y, const uint8_t *text,

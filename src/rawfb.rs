@@ -103,7 +103,44 @@ pub unsafe extern "C" fn ztk_fb_draw_char(
             if px < 0 || px as u32 >= fb_w { continue; }
             if (bits & (1 << (7 - col))) == 0 { continue; }
             let idx = (py as usize) * (fb_w as usize) + (px as usize);
-            *fb.add(idx) = color;
+            let tl = col > 0 && (bits & (1 << (7 - col + 1))) != 0;
+            let tr = col < (font::FONT_W as i32 - 1) && (bits & (1 << (7 - col - 1))) != 0;
+            let tu = row > 0 && (bm[(row - 1) as usize] & (1 << (7 - col))) != 0;
+            let td = row < (font::FONT_H as i32 - 1) && (bm[(row + 1) as usize] & (1 << (7 - col))) != 0;
+            if tl && tr && tu && td {
+                *fb.add(idx) = color;
+            } else {
+                *fb.add(idx) = Color::from_u32(color).blend(Color::from_u32(*fb.add(idx)), 180).to_u32();
+            }
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ztk_fb_draw_char_aa(
+    fb: *mut u32, fb_w: u32, fb_h: u32,
+    x: i32, y: i32, c: u8, color: u32, aa_level: u8,
+) {
+    let bm = font::font_get(c as char);
+    for row in 0..font::FONT_H as i32 {
+        let py = y + row;
+        if py < 0 || py as u32 >= fb_h { continue; }
+        let bits = bm[row as usize];
+        if bits == 0 { continue; }
+        for col in 0..font::FONT_W as i32 {
+            let px = x + col;
+            if px < 0 || px as u32 >= fb_w { continue; }
+            if (bits & (1 << (7 - col))) == 0 { continue; }
+            let idx = (py as usize) * (fb_w as usize) + (px as usize);
+            let tl = col > 0 && (bits & (1 << (7 - col + 1))) != 0;
+            let tr = col < (font::FONT_W as i32 - 1) && (bits & (1 << (7 - col - 1))) != 0;
+            let tu = row > 0 && (bm[(row - 1) as usize] & (1 << (7 - col))) != 0;
+            let td = row < (font::FONT_H as i32 - 1) && (bm[(row + 1) as usize] & (1 << (7 - col))) != 0;
+            if tl && tr && tu && td {
+                *fb.add(idx) = color;
+            } else {
+                *fb.add(idx) = Color::from_u32(color).blend(Color::from_u32(*fb.add(idx)), aa_level).to_u32();
+            }
         }
     }
 }
