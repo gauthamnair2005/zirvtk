@@ -138,11 +138,6 @@ impl Platform {
         unsafe { ffi::zf_reboot() }
     }
 
-    /// Suppress debug output.
-    pub fn suppress_dbg(&self) {
-        unsafe { ffi::zf_suppress_dbg() }
-    }
-
     /// Destroy a buffer.
     pub fn destroy_buffer(&self, buf: &mut DisplayBuffer) {
         unsafe { ffi::zf_destroy_buffer(&mut buf.raw) }

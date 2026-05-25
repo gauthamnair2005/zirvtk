@@ -52,5 +52,4 @@ extern "C" {
     pub fn zf_set_cursor(x: i32, y: i32) -> i32;
     pub fn zf_read_mouse(ev: *mut zf_mouse_event) -> i32;
     pub fn zf_reboot();
-    pub fn zf_suppress_dbg();
 }
