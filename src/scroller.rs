@@ -2,7 +2,6 @@ use alloc::vec::Vec;
 use alloc::boxed::Box;
 use crate::canvas::Canvas;
 use crate::color::Color;
-use crate::font;
 use crate::rect::Rect;
 use crate::widget::{Event, EventResult, Widget};
 use crate::tile::MediaTile;
@@ -90,7 +89,7 @@ impl Widget for TileScroller {
     fn handle_event(&mut self, ev: &Event, _parent: Rect) -> EventResult {
         let r = self.rect;
         match *ev {
-            Event::MouseMove { x, y } => {
+            Event::MouseMove { x, y: _y } => {
                 if self.dragging {
                     let dx = x - self.drag_start_x;
                     let new_off = self.drag_start_offset + dx;
@@ -122,7 +121,7 @@ impl Widget for TileScroller {
                 }
                 EventResult::Ignored
             }
-            Event::MouseUp { x, y, .. } => {
+            Event::MouseUp { x: _x, y: _y, .. } => {
                 if self.dragging {
                     self.dragging = false;
                     return EventResult::Redraw;

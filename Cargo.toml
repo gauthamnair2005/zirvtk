@@ -8,6 +8,7 @@ description = "Zirvium GUI Toolkit — Rust widget library with C FFI"
 default = ["std"]
 std = ["alloc"]
 alloc = []
+rawfb = []
 
 [dependencies]
 bitflags = { version = "2", default-features = false, optional = true }

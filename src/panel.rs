@@ -60,8 +60,8 @@ impl Panel {
     }
 
     fn update_child_layout(&mut self) {
+        let cr = self.content_rect();
         if let Some(ref mut child) = self.child {
-            let cr = self.content_rect();
             child.set_pos(cr.x, cr.y);
             child.set_size(cr.w, cr.h);
         }
@@ -107,8 +107,8 @@ impl Widget for Panel {
     }
 
     fn handle_event(&mut self, ev: &Event, _parent: Rect) -> EventResult {
+        let cr = self.content_rect();
         if let Some(ref mut child) = self.child {
-            let cr = self.content_rect();
             let (x, y) = match *ev {
                 Event::MouseMove { x, y } => (x, y),
                 Event::MouseDown { x, y, .. } => (x, y),

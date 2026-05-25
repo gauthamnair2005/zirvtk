@@ -213,6 +213,17 @@ impl Canvas {
         }
     }
 
+    pub fn hline(&mut self, x: i32, y: i32, w: u32, color: Color) {
+        let c = color.to_u32();
+        if y < 0 || y as u32 >= self.height { return; }
+        let base = (y as usize) * (self.stride as usize);
+        for col in 0..w as i32 {
+            let px = x + col;
+            if px < 0 || px as u32 >= self.width { continue; }
+            self.pixels[base + (px as usize)] = c;
+        }
+    }
+
     pub fn fill_circle(&mut self, cx: i32, cy: i32, r: u32, color: Color) {
         let c = color.to_u32();
         let rr = (r * r) as i32;

@@ -3,7 +3,7 @@ use crate::canvas::Canvas;
 use crate::color::Color;
 use crate::platform::Platform;
 use crate::rect::Rect;
-use crate::widget::{Event, EventResult, Widget};
+use crate::widget::{Event, Widget};
 
 pub struct App {
     platform: Platform,
@@ -33,7 +33,7 @@ impl App {
         Some(app)
     }
 
-    pub fn set_root(&mut self, widget: Box<dyn Widget>) {
+    pub fn set_root(&mut self, mut widget: Box<dyn Widget>) {
         let w = self.canvas.width;
         let h = self.canvas.height;
         widget.set_size(w, h);
@@ -49,7 +49,7 @@ impl App {
         for i in 0..20 {
             let x = ((i * 137 + 50) % w as i32) as i32;
             let y = ((i * 251 + 100) % h as i32) as i32;
-            let r = 1 + (i % 3);
+            let r = 1u32 + (i as u32 % 3);
             let alpha = 8 + (i % 20);
             self.canvas.fill_circle(x, y, r, Color::from_argb(alpha as u8, 100, 150, 255));
         }
@@ -70,9 +70,7 @@ impl App {
     }
 
     fn render_frame(&mut self) -> bool {
-        let info = self.platform.info();
-        let w = info.width;
-        let h = info.height;
+        let _info = self.platform.info();
 
         self.canvas.clear(Color::from_u32(0xFF000000));
         self.render_desktop_bg();

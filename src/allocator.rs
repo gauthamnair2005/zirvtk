@@ -4,17 +4,26 @@
 /// (bump-only). This is acceptable for the compositor app because the
 /// widget tree is built once and lives for the lifetime of the process.
 
+#[cfg(feature = "alloc")]
 use core::alloc::{GlobalAlloc, Layout};
+#[cfg(feature = "alloc")]
 use core::ptr;
-use core::sync::atomic::{AtomicUsize, Ordering};
+#[cfg(feature = "alloc")]
+use core::sync::atomic::Ordering;
+#[cfg(feature = "alloc")]
+use core::sync::atomic::AtomicUsize;
 
+#[cfg(feature = "alloc")]
 const POOL_SIZE: usize = 4 * 1024 * 1024; // 4 MiB
+#[cfg(feature = "alloc")]
 static mut POOL: [u8; POOL_SIZE] = [0; POOL_SIZE];
 
+#[cfg(feature = "alloc")]
 pub struct BumpAlloc {
     next: AtomicUsize,
 }
 
+#[cfg(feature = "alloc")]
 impl BumpAlloc {
     pub const fn new() -> Self {
         Self {
@@ -23,6 +32,7 @@ impl BumpAlloc {
     }
 }
 
+#[cfg(feature = "alloc")]
 unsafe impl GlobalAlloc for BumpAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let align = layout.align();
@@ -48,5 +58,6 @@ unsafe impl GlobalAlloc for BumpAlloc {
     }
 }
 
+#[cfg(feature = "alloc")]
 #[global_allocator]
 static ALLOCATOR: BumpAlloc = BumpAlloc::new();
