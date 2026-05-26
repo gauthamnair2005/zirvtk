@@ -106,6 +106,18 @@ void       ztk_draw_icon(uint32_t *fb, uint32_t fb_w, uint32_t fb_h,
  *  12 = Mail        13 = Store       14 = Maps        15 = About
  */
 
+/* Draw a vector path icon from a compact binary path definition.
+ * path_data points to a sequence of commands:
+ *   0x00 = MoveTo(x, y)  — two u8 coordinates (0-255 normalized)
+ *   0x01 = LineTo(x, y)  — same
+ *   0x04 = End            — terminator
+ * The path is rendered with anti-aliased scanline fill,
+ * automatically scaled to fit the given size.
+ */
+void       ztk_draw_icon_path(uint32_t *fb, uint32_t fb_w, uint32_t fb_h,
+                             int cx, int cy, uint32_t size,
+                             const uint8_t *path_data, uint32_t color);
+
 #ifdef __cplusplus
 }
 #endif

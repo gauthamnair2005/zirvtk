@@ -281,6 +281,11 @@ pub unsafe extern "C" fn ztk_draw_icon(
     fb: *mut u32, fb_w: u32, fb_h: u32,
     cx: i32, cy: i32, size: u32, icon_type: u32, color: u32,
 ) {
+    /* Use vector path if available */
+    if let Some(path) = icon_path_for_type(icon_type) {
+        draw_icon_path(fb, fb_w, fb_h, cx, cy, size, path, color);
+        return;
+    }
     let s = size as i32;
     let half = s / 2;
     match icon_type {
@@ -427,5 +432,275 @@ pub unsafe extern "C" fn ztk_draw_icon(
             ztk_fb_fill_rect(fb, fb_w, fb_h, cx - dot_r as i32 / 2, cy + s / 12, dot_r, (s / 6) as u32, 0xFF000000);
         }
         _ => {}
+    }
+}
+
+/* ── Vector path rendering (no_std, fixed-point friendly) ─────────────── */
+
+/* A path command is a byte stream:
+ *   0x00 = MoveTo(x, y)     — followed by 4 bytes: x, y as u8 (0..255 normalized)
+ *   0x01 = LineTo(x, y)     — same
+ *   0x04 = Close            — no more data
+ */
+fn path_coord(data: &[u8], pos: &mut usize) -> (u8, u8) {
+    let x = if *pos < data.len() { data[*pos] } else { 0 }; *pos += 1;
+    let y = if *pos < data.len() { data[*pos] } else { 0 }; *pos += 1;
+    (x, y)
+}
+
+fn path_cmd(data: &[u8], pos: &mut usize) -> u8 {
+    if *pos < data.len() { let c = data[*pos]; *pos += 1; c } else { 0xFF }
+}
+
+/* Anti-aliased polygon fill using fixed-point scanline with 4×4 sub-pixel sampling */
+fn fill_poly_aa(
+    fb: *mut u32, fb_w: u32, fb_h: u32,
+    pts: &[(i32, i32)],
+    color: u32,
+) {
+    let n = pts.len();
+    if n < 3 { return; }
+
+    /* Build edge table (bucketed by scanline) */
+    let mut y_min = i32::MAX;
+    let mut y_max = i32::MIN;
+    for &(_, y) in pts {
+        if y < y_min { y_min = y; }
+        if y > y_max { y_max = y; }
+    }
+    y_min = y_min.max(0);
+    y_max = y_max.min(fb_h as i32 - 1);
+    if y_min > y_max { return; }
+
+    /* For each scanline, test pixels with 4×4 sub-samples */
+    for py in y_min..=y_max {
+        /* Determine x range for this scanline */
+        let mut x_min = i32::MAX;
+        let mut x_max = i32::MIN;
+
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let (x1, y1) = pts[i];
+            let (x2, y2) = pts[j];
+            /* Check if edge crosses this scanline */
+            let (y_lo, y_hi) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
+            if py < y_lo || py >= y_hi { continue; }
+            /* Interpolate x at this scanline */
+            let num: f32 = (py - y1) as f32;
+            let den: f32 = (y2 - y1) as f32;
+            let x_at = x1 as f32 + num / den * (x2 - x1) as f32;
+            let xi = x_at as i32;
+            if xi < x_min { x_min = xi; }
+            if xi + 1 > x_max { x_max = xi + 1; }
+        }
+
+        if x_min == i32::MAX { continue; }
+        x_min = x_min.max(0);
+        x_max = x_max.min(fb_w as i32 - 1);
+
+        for px in x_min..=x_max {
+            let mut inside_count = 0i32;
+
+            for sy in 0..4 {
+                let sample_y = (py * 4 + sy) as f32 + 0.5;
+
+                /* Find x-intersections along this sub-scanline */
+                let mut ix = [0i32; 64];
+                let mut ic = 0usize;
+
+                for i in 0..n {
+                    let j = (i + 1) % n;
+                    let (x1, y1) = pts[i];
+                    let (x2, y2) = pts[j];
+                    let y1s = y1 * 4;
+                    let y2s = y2 * 4;
+                    let (y_lo, y_hi) = if y1s < y2s { (y1s, y2s) } else { (y2s, y1s) };
+                    let sy_i = sample_y as i32;
+                    if sy_i < y_lo || sy_i >= y_hi { continue; }
+                    let num: f32 = (sample_y - y1s as f32) / 4.0;
+                    let den: f32 = (y2 - y1) as f32;
+                    let x_at = x1 as f32 + num / den * (x2 - x1) as f32;
+                    if ic < ix.len() {
+                        ix[ic] = (x_at * 4.0) as i32;
+                        ic += 1;
+                    }
+                }
+
+                if ic < 2 { continue; }
+
+                /* Sort intersections */
+                for ii in 0..ic {
+                    for jj in ii + 1..ic {
+                        if ix[ii] > ix[jj] { ix.swap(ii, jj); }
+                    }
+                }
+
+                for sx in 0..4 {
+                    let sample_x = ((px * 4 + sx) as f32 + 0.5) as i32;
+                    let mut inside = false;
+                    let mut k = 0;
+                    while k + 1 < ic {
+                        if sample_x >= ix[k] && sample_x < ix[k + 1] {
+                            inside = !inside;
+                        }
+                        k += 2;
+                    }
+                    if inside { inside_count += 1; }
+                }
+            }
+
+            if inside_count > 0 {
+                let aa = (inside_count * 255 / 16) as u8;
+                let idx = (py as usize) * (fb_w as usize) + (px as usize);
+                unsafe {
+                    *fb.add(idx) = Color::from_u32(color).blend(Color::from_u32(*fb.add(idx)), aa).to_u32();
+                }
+            }
+        }
+    }
+}
+
+/* Internal: draw an icon path from a byte slice */
+unsafe fn draw_icon_path(
+    fb: *mut u32, fb_w: u32, fb_h: u32,
+    cx: i32, cy: i32, size: u32,
+    data: &[u8], color: u32,
+) {
+    let scale = size as f32;
+    let half = scale / 2.0;
+    let mut pos = 0usize;
+
+    let mut pts: [core::mem::MaybeUninit<(i32, i32)>; 512] = core::mem::MaybeUninit::uninit().assume_init();
+    let mut pc = 0usize;
+
+    loop {
+        let cmd = path_cmd(data, &mut pos);
+        match cmd {
+            0x00 => { /* MoveTo — add as first vertex */
+                let (x, y) = path_coord(data, &mut pos);
+                if pc < pts.len() {
+                    pts[pc] = core::mem::MaybeUninit::new((x as i32, y as i32));
+                    pc += 1;
+                }
+            }
+            0x01 => { /* LineTo */
+                let (x, y) = path_coord(data, &mut pos);
+                if pc < pts.len() {
+                    pts[pc] = core::mem::MaybeUninit::new((x as i32, y as i32));
+                    pc += 1;
+                }
+            }
+            0x04 | 0xFF => { /* Close / end */
+                break;
+            }
+            _ => { break; }
+        }
+    }
+
+    if pc < 3 { return; }
+
+    let mut min_x = i32::MAX; let mut min_y = i32::MAX;
+    let mut max_x = i32::MIN; let mut max_y = i32::MIN;
+    for i in 0..pc {
+        let (x, y) = unsafe { pts[i].assume_init() };
+        if x < min_x { min_x = x; }
+        if y < min_y { min_y = y; }
+        if x > max_x { max_x = x; }
+        if y > max_y { max_y = y; }
+    }
+    let pw = (max_x - min_x).max(1) as f32;
+    let ph = (max_y - min_y).max(1) as f32;
+    let s = scale / pw.max(ph);
+
+    let mut tpts: [core::mem::MaybeUninit<(i32, i32)>; 512] = core::mem::MaybeUninit::uninit().assume_init();
+    for i in 0..pc {
+        let (x, y) = unsafe { pts[i].assume_init() };
+        let tx = (cx as f32 + (x - min_x) as f32 * s - scale / 2.0 + half) as i32;
+        let ty = (cy as f32 + (y - min_y) as f32 * s - scale / 2.0 + half) as i32;
+        tpts[i] = core::mem::MaybeUninit::new((tx, ty));
+    }
+    let tslice = unsafe { core::slice::from_raw_parts(tpts.as_ptr() as *const (i32, i32), pc) };
+    fill_poly_aa(fb, fb_w, fb_h, tslice, color);
+}
+
+/* Draw an icon from a compact binary path definition (C API).
+ * 'path_data' must point to a null-terminated command stream
+ * (0x00 = MoveTo, 0x01 = LineTo, 0x04 = End, 0x00 = null terminator).
+ * For Rust callers, prefer calling with a &[u8] slice directly.
+ */
+#[no_mangle]
+pub unsafe extern "C" fn ztk_draw_icon_path(
+    fb: *mut u32, fb_w: u32, fb_h: u32,
+    cx: i32, cy: i32, size: u32,
+    path_data: *const u8, color: u32,
+) {
+    if path_data.is_null() { return; }
+    /* Find length — scan for 0x04 (End) command, not 0x00 (MoveTo would match!) */
+    let mut l = 0usize;
+    while *path_data.add(l) != 0x04 { l += 1; }
+    let data = core::slice::from_raw_parts(path_data, l + 1);
+    draw_icon_path(fb, fb_w, fb_h, cx, cy, size, data, color);
+}
+
+/* Predefined app icons as compact binary path data.
+ * Format: command byte followed by params.
+ * 0x00 = MoveTo(u8 x, u8 y)  — absolute, coordinates in 0..255
+ * 0x01 = LineTo(u8 x, u8 y)
+ * 0x04 = End (null terminator)
+ *
+ * These are converted from Material Design SVG paths. */
+/* Icons as compact binary path data.
+ * Each path: MoveTo(0x00,x,y) → LineTo(0x01,x,y)* → End(0x04).
+ * All paths properly close back to MoveTo position. Coordinates in 0..255 viewBox.
+ *
+ * Terminal: monitor with trapezoid stand */
+#[no_mangle]
+pub static ICON_TERMINAL_PATH: &[u8] = b"\x00\x28\x1e\x01\xd8\x1e\x01\xd8\xaa\x01\xb0\xaa\x01\x80\xe2\x01\x50\xaa\x01\x28\xaa\x01\x28\x1e\x04";
+/* Calculator: rectangle with display/button divider notch */
+#[no_mangle]
+pub static ICON_CALC_PATH: &[u8] = b"\x00\x28\x1e\x01\xd8\x1e\x01\xd8\x64\x01\xb4\x64\x01\xb4\x78\x01\xd8\x78\x01\xd8\xe2\x01\x28\xe2\x01\x28\x78\x01\x4c\x78\x01\x4c\x64\x01\x28\x64\x01\x28\x1e\x04";
+/* Settings: regular hexagon */
+#[no_mangle]
+pub static ICON_SETTINGS_PATH: &[u8] = b"\x00\x80\x1e\x01\xd2\x46\x01\xd2\xb4\x01\x80\xe2\x01\x2e\xb4\x01\x2e\x46\x01\x80\x1e\x04";
+/* Clock: octagon with two hand notches (7:30 and 4:30) */
+#[no_mangle]
+pub static ICON_CLOCK_PATH: &[u8] = b"\x00\xe2\x80\x01\xe2\x98\x01\xb4\xb4\x01\xb4\xe2\x01\x9c\xe2\x01\x80\xc6\x01\x64\xe2\x01\x4c\xe2\x01\x4c\xb4\x01\x1e\x98\x01\x1e\x80\x01\x4c\x64\x01\x4c\x4c\x01\x64\x4c\x01\x80\x68\x01\x9c\x4c\x01\xb4\x4c\x01\xb4\x64\x01\xe2\x80\x04";
+/* Editor: document page shape */
+#[no_mangle]
+pub static ICON_EDITOR_PATH: &[u8] = b"\x00\x3c\x1e\x01\xc4\x1e\x01\xc4\xd2\x01\x80\xe2\x01\x3c\xd2\x01\x3c\x1e\x04";
+/* Snake: zigzag S-pattern */
+#[no_mangle]
+pub static ICON_SNAKE_PATH: &[u8] = b"\x00\x1e\x50\x01\x50\x1e\x01\x82\x50\x01\xb4\x1e\x01\xe2\x50\x01\xe2\xb4\x01\xb4\xe2\x01\x82\xb4\x01\x50\xe2\x01\x1e\xb4\x01\x1e\x50\x04";
+/* Pong: paddle+ball silhouette */
+#[no_mangle]
+pub static ICON_PONG_PATH: &[u8] = b"\x00\x50\x1e\x01\xb0\x1e\x01\xb0\x32\x01\xc8\x46\x01\xc8\xba\x01\x80\xe2\x01\x38\xba\x01\x38\x46\x01\x50\x32\x01\x50\x1e\x04";
+/* Tetris: L-tetromino */
+#[no_mangle]
+pub static ICON_TETRIS_PATH: &[u8] = b"\x00\x46\x1e\x01\xba\x1e\x01\xba\x50\x01\xe2\x50\x01\xe2\x82\x01\x8c\x82\x01\x8c\xe2\x01\x46\xe2\x01\x46\x1e\x04";
+/* Demo: 4-pointed star/diamond */
+#[no_mangle]
+pub static ICON_DEMO_PATH: &[u8] = b"\x00\x80\x1e\x01\xe2\x70\x01\xe2\xba\x01\x80\xe2\x01\x1e\xba\x01\x1e\x70\x01\x80\x1e\x04";
+/* Zirvium logo: stylized "Z" mark */
+#[no_mangle]
+pub static ICON_ZIRVIUM_PATH: &[u8] = b"\x00\x28\x1e\x01\xd8\x1e\x01\xd8\x46\x01\x64\xba\x01\xd8\xba\x01\xd8\xe2\x01\x28\xe2\x01\x28\xba\x01\x9c\x46\x01\x28\x46\x01\x28\x1e\x04";
+/* Back arrow: simple left-pointing chevron */
+#[no_mangle]
+pub static ICON_BACK_PATH: &[u8] = b"\x00\x96\x32\x01\x3c\x80\x01\x96\xce\x04";
+
+/* Helper: draw icon type using vector path or fallback */
+fn icon_path_for_type(typ: u32) -> Option<&'static [u8]> {
+    match typ {
+        0 => Some(ICON_TERMINAL_PATH),
+        1 => Some(ICON_CALC_PATH),
+        2 => Some(ICON_SETTINGS_PATH),
+        3 => Some(ICON_CLOCK_PATH),
+        4 => Some(ICON_EDITOR_PATH),
+        5 => Some(ICON_SNAKE_PATH),
+        6 => Some(ICON_PONG_PATH),
+        7 => Some(ICON_TETRIS_PATH),
+        8 => Some(ICON_DEMO_PATH),
+        9 => Some(ICON_ZIRVIUM_PATH),
+        10 => Some(ICON_BACK_PATH),
+        _ => None,
     }
 }
