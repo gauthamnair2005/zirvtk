@@ -58,7 +58,6 @@ pub mod rawfb;
 
 #[cfg(feature = "alloc")]
 pub mod obj3d;
-
 #[cfg(feature = "alloc")]
 pub use obj3d::*;
 
@@ -66,3 +65,24 @@ pub use obj3d::*;
 mod c_api;
 #[cfg(feature = "alloc")]
 pub use c_api::*;
+
+#[cfg(feature = "alloc")]
+pub mod fx;
+#[cfg(feature = "alloc")]
+pub mod particle;
+#[cfg(feature = "alloc")]
+pub mod glass_panel;
+#[cfg(feature = "alloc")]
+pub mod neon_button;
+#[cfg(feature = "alloc")]
+pub mod animated_toggle;
+#[cfg(feature = "alloc")]
+pub mod glow_slider;
+#[cfg(feature = "alloc")]
+pub mod futuristic_clock;
+#[cfg(feature = "alloc")]
+pub mod app_launcher;
+#[cfg(feature = "alloc")]
+pub mod taskbar;
+#[cfg(feature = "alloc")]
+pub mod desktop;

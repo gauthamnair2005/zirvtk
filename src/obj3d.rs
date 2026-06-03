@@ -47,7 +47,7 @@ impl Mat4 {
     }
 
     pub fn perspective(fov_rad: f32, aspect: f32, near: f32, far: f32) -> Self {
-        let f = 1.0 / (fov_rad * 0.5).tan();
+        let f = 1.0 / libm::tanf(fov_rad * 0.5);
         let range_inv = 1.0 / (near - far);
         let mut m = [0.0f32; 16];
         m[0] = f / aspect;
@@ -80,15 +80,7 @@ impl Mat4 {
     }
 
     pub fn rotate_y(angle: f32) -> Self {
-        let (s, c) = (angle.sin(), angle.cos());
-        let mut m = Self::identity();
-        m.0[0] = c;  m.0[8]  = s;
-        m.0[2] = -s; m.0[10] = c;
-        m
-    }
-
-    pub fn rotate_x(angle: f32) -> Self {
-        let (s, c) = (angle.sin(), angle.cos());
+        let (s, c) = (libm::sinf(angle), libm::cosf(angle));
         let mut m = Self::identity();
         m.0[5] = c;  m.0[9]  = -s;
         m.0[6] = s;  m.0[10] = c;
@@ -140,7 +132,7 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
 }
 
 fn normalize(v: [f32; 3]) -> [f32; 3] {
-    let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+    let len = libm::sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
     if len < 1e-8 { return [0.0; 3]; }
     [v[0] / len, v[1] / len, v[2] / len]
 }
@@ -205,13 +197,13 @@ mod tessellated {
 
         for j in 0..=stacks {
             let theta = core::f32::consts::PI * j as f32 / stacks as f32;
-            let sin_theta = theta.sin();
-            let cos_theta = theta.cos();
+            let sin_theta = libm::sinf(theta);
+            let cos_theta = libm::cosf(theta);
             for i in 0..=slices {
                 let phi = 2.0 * core::f32::consts::PI * i as f32 / slices as f32;
-                let x = radius * sin_theta * phi.cos();
+                let x = radius * sin_theta * libm::cosf(phi);
                 let y = radius * cos_theta;
-                let z = radius * sin_theta * phi.sin();
+                let z = radius * sin_theta * libm::sinf(phi);
                 verts.push(Vertex3 { x, y, z });
             }
         }
@@ -243,14 +235,14 @@ mod tessellated {
 
         for i in 0..slices {
             let a = 2.0 * core::f32::consts::PI * i as f32 / slices as f32;
-            let x = radius * a.cos();
-            let z = radius * a.sin();
+            let x = radius * libm::cosf(a);
+            let z = radius * libm::sinf(a);
             verts.push(Vertex3 { x, y: -hh, z });
         }
         for i in 0..slices {
             let a = 2.0 * core::f32::consts::PI * i as f32 / slices as f32;
-            let x = radius * a.cos();
-            let z = radius * a.sin();
+            let x = radius * libm::cosf(a);
+            let z = radius * libm::sinf(a);
             verts.push(Vertex3 { x, y: hh, z });
         }
 
@@ -278,13 +270,13 @@ mod tessellated {
 
         for j in 0..=major_seg {
             let theta = 2.0 * core::f32::consts::PI * j as f32 / major_seg as f32;
-            let ct = theta.cos();
-            let st = theta.sin();
+            let ct = libm::cosf(theta);
+            let st = libm::sinf(theta);
             for i in 0..=minor_seg {
                 let phi = 2.0 * core::f32::consts::PI * i as f32 / minor_seg as f32;
-                let x = (major_r + minor_r * phi.cos()) * ct;
-                let y = minor_r * phi.sin();
-                let z = (major_r + minor_r * phi.cos()) * st;
+                let x = (major_r + minor_r * libm::cosf(phi)) * ct;
+                let y = minor_r * libm::sinf(phi);
+                let z = (major_r + minor_r * libm::cosf(phi)) * st;
                 verts.push(Vertex3 { x, y, z });
             }
         }

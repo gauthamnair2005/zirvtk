@@ -18,6 +18,9 @@ void       ztk_app_run(ZtkApp *app);
 void       ztk_app_set_root(ZtkApp *app, ZtkWidget *widget);
 void       ztk_app_destroy(ZtkApp *app);
 
+/* ── Desktop (new futuristic compositor) ────────────────────────────────── */
+int        ztk_desktop_run(void);
+
 /* ── Widget constructors ────────────────────────────────────────────────── */
 ZtkWidget* ztk_button_create(const char *text);
 ZtkWidget* ztk_label_create(const char *text);

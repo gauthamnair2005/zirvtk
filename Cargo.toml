@@ -12,6 +12,7 @@ rawfb = []
 
 [dependencies]
 bitflags = { version = "2", default-features = false, optional = true }
+libm = { version = "0.2", default-features = false }
 
 [build-dependencies]
 cc = "1"

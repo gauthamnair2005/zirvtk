@@ -1,36 +1,56 @@
-# ZirvTK — MOSIX GUI Toolkit (Reference Widget Library)
+# ZirvTK — MOSIX Desktop Toolkit & Widget Library
 
-Rust GUI toolkit for **MOSIX** operating systems. Provides a widget library
-with C FFI for building graphical applications on top of the ZirvFlux display
-framework.
+Rust GUI toolkit for **MOSIX** operating systems. Provides a complete desktop
+compositor (ZirvTK Desktop) and widget library with C FFI for building
+graphical applications on top of the ZirvFlux display framework.
 
 Part of the [Zirvium](https://github.com/gauthamnair2005/zirvium) reference
-MOSIX implementation. See the [MOSIX specification](https://github.com/gauthamnair2005/zirvworld)
-for the full standard.
+MOSIX implementation.
 
 ## Features
 
-- Widget tree with event propagation and layout
-- MediaTile — content tile with thumbnails, labels, gradients
-- TileScroller — scrollable grid of MediaTiles with physics-based scrolling
-- Canvas — software rendering surface with pixel, rect, text drawing
-- Color, Rect, Font primitives
-- App — application scaffold with platform abstraction
-- C FFI (`zirvtk.h`) for linking from C/C++ compositors
-- `no_std` compatible with custom allocator for freestanding environments
+### Desktop Compositor
+- **Dark/neon/glass aesthetic** — futuristic UI with gradient backgrounds, glass panels, and glow effects
+- **Real-time clock** — RTC-driven time with anti-aliased large-scale digits and formatted date
+- **Taskbar** — bottom/top panel with launcher dot button and live time display
+- **App Launcher** — grid-based app menu with SVG vector icons, hover effects, and pulsing animation
+- **Particle system** — ambient floating particles with color cycling
+- **Hardware cursor** — DisplayJet hardware cursor, no software cursor overhead
+- **Tear-free rendering** — VBE page flipping via DisplayJet Y_OFFSET flip
+
+### Widget System
+- Widget trait with event propagation (MouseMove, MouseDown, MouseUp)
+- AppLauncher — configurable app grid with styled icons
+- TaskBar — panel with launcher button and clock
+- FuturisticClock — anti-aliased large-scale clock display
+- NeonButton, GlassPanel, GlowSlider, AnimatedToggle — decorative widgets
+- Canvas — software rendering with scanline-optimized rounded rects
+
+### Canvas Rendering
+- Scanline-based `fill_round_rect` and `stroke_round_rect` (O(h) instead of O(w\*h))
+- `fill_gradient_v` / `clear_gradient` — vertical gradient fills
+- `draw_char_scaled` — bilinear-interpolated anti-aliased text
+- `fill_circle` — integer edge-finding slice fill (no per-pixel sqrt)
+- Alpha blending, glass panel rendering
+- SVG-style vector path icon rendering
+
+### Platform Support
+- `no_std` + `alloc` compatible — runs in freestanding kernel environments
+- C FFI (`zirvtk.h`) — link from C/C++ compositors
+- DisplayJet / ZirvFlux backend
 
 ## Widgets
 
 | Widget | Description |
 |--------|-------------|
 | `Widget` | Base trait: event handling, layout, draw |
-| `Button` | Clickable button with label |
-| `Label` | Static text label |
-| `Panel` | Container for child widgets |
-| `Window` | Top-level window with title bar |
-| `Scroller` | Vertical/horizontal scroll container |
-| `MediaTile` | Thumbnail + title + gradient tile |
-| `TileScroller` | Grid-based media tile scroller |
+| `AppLauncher` | Grid-based app menu with icons and hover effects |
+| `TaskBar` | Desktop panel with launcher button and system clock |
+| `FuturisticClock` | Anti-aliased large-format clock with date |
+| `NeonButton` | Glowing neon-styled button |
+| `GlassPanel` | Semi-transparent glass panel with border |
+| `GlowSlider` | Slider control with glow handle |
+| `AnimatedToggle` | Toggle switch with animated glow |
 
 ## Project Structure
 
@@ -38,21 +58,25 @@ for the full standard.
 src/
   lib.rs           Crate root, no_std entry point
   allocator.rs     Freestanding arena allocator
-  app.rs           Application scaffold
-  button.rs        Button widget
-  canvas.rs        Software renderer
+  app_launcher.rs  App launcher widget
+  canvas.rs        Software renderer (scanline-optimized)
   c_api.rs         C FFI exports
-  color.rs         Color types
-  ffi.rs           Internal FFI helpers
-  font.rs          5x7 bitmap font data
-  label.rs         Label widget
-  panel.rs         Panel container widget
+  color.rs         Color types (RGBA, blend, gradient)
+  desktop.rs       Desktop compositor
+  ffi.rs           ZirvFlux FFI bindings
+  font.rs          Bitmap font data (Inter)
+  futuristic_clock.rs Clock widget with anti-aliased text
+  fx.rs            Visual effects (glow, glass panel, scanline)
+  glass_panel.rs   Glass panel widget
+  glow_slider.rs   Glow slider widget
+  neon_button.rs   Neon button widget
+  obj3d.rs         3D object utilities
+  particle.rs      Particle system
   platform.rs      Platform abstraction (DisplayBuffer, events)
+  rawfb.rs         Raw framebuffer drawing + vector path icons
   rect.rs          Rectangle geometry
-  scroller.rs      Scroll container widget
-  tile.rs          MediaTile widget
+  taskbar.rs       Taskbar widget
   widget.rs        Widget trait + Event types
-  window.rs        Window widget
 include/
   zirvtk.h         C header for FFI
 ```
@@ -60,17 +84,21 @@ include/
 ## Build
 
 ```bash
-cargo build --release
+# Standalone (with ZirvFlux dependency)
+ZIRVFLUX_DIR=../zirvflux cargo build --release --no-default-features --features alloc
+
+# As submodule in Zirvium
+cd /path/to/zirvium/zirvtk
+ZIRVFLUX_DIR=../zirvflux cargo build --release --no-default-features --features alloc
 ```
 
-Builds `libzirvtk.a`, `libzirvtk.so`, and `libzirvtk.rlib`.
-
-## Examples
-
-- `demo_rust` — GUI demo in Rust
-- `demo_c` — GUI demo in C (links via C FFI)
+Builds `libzirvtk.a` and `libzirvtk.rlib`.
 
 ## Dependencies
 
 - [zirvflux](https://github.com/gauthamnair2005/zirvflux) — Display framework
-- [zirvlibc](https://github.com/gauthamnair2005/zirvlibc) — C library
+- `libm` — Math library (sqrt, sin, cos for effects and rendering)
+
+## License
+
+GPLv3

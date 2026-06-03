@@ -14,7 +14,7 @@ use core::sync::atomic::Ordering;
 use core::sync::atomic::AtomicUsize;
 
 #[cfg(feature = "alloc")]
-const POOL_SIZE: usize = 4 * 1024 * 1024; // 4 MiB
+const POOL_SIZE: usize = 16 * 1024 * 1024; // 16 MiB
 #[cfg(feature = "alloc")]
 static mut POOL: [u8; POOL_SIZE] = [0; POOL_SIZE];
 

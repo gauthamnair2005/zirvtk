@@ -110,7 +110,7 @@ pub unsafe extern "C" fn ztk_fb_draw_char(
             if tl && tr && tu && td {
                 *fb.add(idx) = color;
             } else {
-                *fb.add(idx) = Color::from_u32(color).blend(Color::from_u32(*fb.add(idx)), 180).to_u32();
+                *fb.add(idx) = Color::from_u32(color).blend(Color::from_u32(*fb.add(idx)), 200).to_u32();
             }
         }
     }
@@ -640,6 +640,13 @@ pub unsafe extern "C" fn ztk_draw_icon_path(
     while *path_data.add(l) != 0x04 { l += 1; }
     let data = core::slice::from_raw_parts(path_data, l + 1);
     draw_icon_path(fb, fb_w, fb_h, cx, cy, size, data, color);
+}
+
+pub fn draw_icon_canvas(canvas: &mut crate::canvas::Canvas, cx: i32, cy: i32, size: u32, icon_type: u32, color: Color) {
+    let fb = canvas.pixels_mut().as_mut_ptr();
+    let w = canvas.width;
+    let h = canvas.height;
+    unsafe { ztk_draw_icon(fb, w, h, cx, cy, size, icon_type, color.to_u32()); }
 }
 
 /* Predefined app icons as compact binary path data.

@@ -52,4 +52,30 @@ extern "C" {
     pub fn zf_set_cursor(x: i32, y: i32) -> i32;
     pub fn zf_read_mouse(ev: *mut zf_mouse_event) -> i32;
     pub fn zf_reboot();
+
+    /* libc helpers available in kernel userspace */
+    pub fn msleep(ms: u64);
+    pub fn read_keys(ev: *mut key_event) -> i32;
+}
+
+#[repr(C)]
+pub struct key_event {
+    pub keycode: u16,
+    pub pressed: u8,
+    pub mods: u8,
+}
+
+#[repr(C)]
+pub struct DateTime {
+    pub year: i32,
+    pub month: i32,
+    pub day: i32,
+    pub hour: i32,
+    pub minute: i32,
+    pub second: i32,
+}
+
+extern "C" {
+    pub fn getdatetime(dt: *mut DateTime) -> i32;
+    pub fn uptime() -> u64;
 }
