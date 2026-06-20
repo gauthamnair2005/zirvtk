@@ -56,6 +56,9 @@ extern "C" {
     /* libc helpers available in kernel userspace */
     pub fn msleep(ms: u64);
     pub fn read_keys(ev: *mut key_event) -> i32;
+
+    /* execve — replace current process with embedded binary */
+    pub fn execve(path: *const u8, argv: *const *const u8, envp: *const *const u8) -> i32;
 }
 
 #[repr(C)]

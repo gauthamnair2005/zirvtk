@@ -45,7 +45,21 @@ impl Desktop {
 
         let mut launcher = AppLauncher::new();
         launcher.set_pos((width as i32 - launcher.rect().w as i32) / 2, (height as i32 - launcher.rect().h as i32) / 2);
-        launcher.on_launch = Some(|_| {});
+        launcher.on_launch = Some(|idx| {
+            let path: &[u8] = match idx {
+                0 => &b"/bin/shell\0"[..],
+                1 => &b"/bin/hello\0"[..],
+                2 => &b"/bin/sysinfo\0"[..],
+                3 => &b"/bin/sysinfo\0"[..],
+                4 => &b"/bin/clear\0"[..],
+                5 => &b"/bin/cat\0"[..],
+                6 => &b"/bin/nokia\0"[..],
+                7 => &b"/bin/hello\0"[..],
+                8 => &b"/bin/hello\0"[..],
+                _ => &b"/bin/hello\0"[..],
+            };
+            unsafe { ffi::execve(path.as_ptr(), core::ptr::null(), core::ptr::null()); }
+        });
 
         let mut taskbar = TaskBar::new();
         taskbar.set_size(width, 44);
