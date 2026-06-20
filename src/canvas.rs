@@ -215,7 +215,15 @@ impl Canvas {
                 let px = x + col;
                 if px < 0 || px as u32 >= self.width { continue; }
                 if (bits & (1 << (7 - col))) == 0 { continue; }
-                self.set_pixel(px, py, color);
+                let tl = col > 0 && (bits & (1 << (7 - col + 1))) != 0;
+                let tr = col < (font::FONT_W as i32 - 1) && (bits & (1 << (7 - col - 1))) != 0;
+                let tu = row > 0 && (bm[(row - 1) as usize] & (1 << (7 - col))) != 0;
+                let td = row < (font::FONT_H as i32 - 1) && (bm[(row + 1) as usize] & (1 << (7 - col))) != 0;
+                if tl && tr && tu && td {
+                    self.set_pixel(px, py, color);
+                } else {
+                    self.blend_pixel(px, py, color, 200);
+                }
             }
         }
     }

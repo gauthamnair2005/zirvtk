@@ -6,7 +6,6 @@ use crate::canvas::Canvas;
 use crate::label::Label;
 use crate::panel::Panel;
 use crate::window::Window;
-use crate::desktop::Desktop;
 use crate::Widget;
 
 pub enum ZtkApp {}
@@ -127,12 +126,4 @@ pub extern "C" fn ztk_canvas_present_region(canvas: *mut ZtkCanvas, x: u32, y: u
     canvas.present_region(x, y, w, h);
 }
 
-#[no_mangle]
-pub extern "C" fn ztk_desktop_run() -> i32 {
-    let mut desktop = match Desktop::new() {
-        Some(d) => d,
-        None => return -1,
-    };
-    desktop.run();
-    0
-}
+

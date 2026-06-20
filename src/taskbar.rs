@@ -1,10 +1,8 @@
 use crate::canvas::Canvas;
 use crate::color::Color;
-use crate::fx;
-use crate::font;
 use crate::rect::Rect;
 use crate::widget::{Event, EventResult, Widget};
-use core::fmt::Write;
+use crate::font;
 
 struct BufW<'a>(&'a mut [u8], usize);
 
@@ -20,21 +18,17 @@ impl<'a> core::fmt::Write for BufW<'a> {
 pub struct TaskBar {
     rect: Rect,
     pub show_launcher: bool,
-    pub time_h: u32, pub time_m: u32, pub time_s: u32,
+    pub time_h: u32, pub time_m: u32,
     launcher_hover: bool,
-    app_count: u32,
-    pub on_launcher_click: Option<fn()>,
 }
 
 impl TaskBar {
     pub fn new() -> Self {
         Self {
-            rect: Rect::new(0, 0, 800, 40),
+            rect: Rect::new(0, 0, 800, 48),
             show_launcher: false,
-            time_h: 0, time_m: 0, time_s: 0,
+            time_h: 0, time_m: 0,
             launcher_hover: false,
-            app_count: 0,
-            on_launcher_click: None,
         }
     }
 
@@ -43,45 +37,41 @@ impl TaskBar {
         self.time_m = m;
     }
 
-    fn launcher_rect(&self) -> Rect {
-        Rect::new(self.rect.x + 6, self.rect.y + 4, 32, self.rect.h - 8)
+    fn start_rect(&self) -> Rect {
+        Rect::new(self.rect.x + 4, self.rect.y + 4, 48, self.rect.h - 8)
     }
 
     fn clock_rect(&self) -> Rect {
-        let clock_w = 80u32;
-        Rect::new(self.rect.x + self.rect.w as i32 - clock_w as i32 - 8, self.rect.y, clock_w, self.rect.h)
+        let cw = 100u32;
+        Rect::new(self.rect.x + self.rect.w as i32 - cw as i32 - 8, self.rect.y, cw, self.rect.h)
     }
 }
 
 impl Widget for TaskBar {
     fn draw(&self, canvas: &mut Canvas) {
-        let glow_intensity = if self.launcher_hover { 50u8 } else { 15u8 };
-        fx::glass_panel(canvas,
-            self.rect.x, self.rect.y, self.rect.w, self.rect.h,
-            0, Color::from_argb(200, 10, 10, 20), 200,
-            Color::from_rgb(0, 212, 255), glow_intensity);
+        canvas.fill_rect(self.rect.x, self.rect.y, self.rect.w, self.rect.h, Color::from_rgb(16, 16, 16));
 
-        canvas.hline(self.rect.x, self.rect.y, self.rect.w, Color::from_argb(50, 0, 212, 255));
-
-        let lr = self.launcher_rect();
+        let sr = self.start_rect();
         let is_hover = self.launcher_hover;
 
-        canvas.fill_round_rect(lr.x, lr.y, lr.w, lr.h, 6,
-            if is_hover { Color::from_argb(60, 0, 212, 255) } else { Color::from_argb(20, 100, 100, 140) });
+        let start_bg = if is_hover { Color::from_rgb(60, 60, 60) } else { Color::from_rgb(40, 40, 40) };
+        canvas.fill_rect(sr.x, sr.y, sr.w, sr.h, start_bg);
 
-        let dot_cy = lr.y + lr.h as i32 / 2;
-        for i in 0..3 {
-            let dot_cx = lr.x + (lr.w as i32 / 4) * (i + 1);
-            canvas.fill_circle(dot_cx, dot_cy, 2, Color::from_rgb(0, 212, 255));
-        }
+        let lx = sr.x + sr.w as i32 / 2 - 6;
+        let ly = sr.y + sr.h as i32 / 2 - 6;
+        let logo_color = Color::from_rgb(0, 120, 215);
+        canvas.fill_rect(lx, ly, 4, 4, logo_color);
+        canvas.fill_rect(lx + 8, ly, 4, 4, Color::from_rgb(240, 140, 40));
+        canvas.fill_rect(lx, ly + 8, 4, 4, Color::from_rgb(80, 180, 80));
+        canvas.fill_rect(lx + 8, ly + 8, 4, 4, Color::from_rgb(220, 60, 140));
 
         if self.show_launcher {
-            canvas.fill_round_rect(lr.x, lr.y + lr.h as i32 - 2, lr.w, 2, 1, Color::from_rgb(0, 212, 255));
+            canvas.fill_rect(sr.x, sr.y + sr.h as i32 - 2, sr.w, 2, Color::from_rgb(0, 120, 215));
         }
 
-        let mut buf = [0u8; 16];
+        let mut buf = [0u8; 8];
         let mut w = BufW(&mut buf, 0);
-        let _ = write!(w, "{:02}:{:02}", self.time_h, self.time_m);
+        let _ = core::fmt::write(&mut w, format_args!("{:02}:{:02}", self.time_h, self.time_m));
         let len = w.1;
         let step = (font::FONT_W + 1) as i32;
         let tw = len as i32 * step;
@@ -89,12 +79,12 @@ impl Widget for TaskBar {
         let cx = cr.x + (cr.w as i32 - tw) / 2;
         let cy = cr.y + (cr.h as i32 - font::FONT_H as i32) / 2;
         for i in 0..len {
-            canvas.draw_char(cx + i as i32 * step, cy, buf[i] as char, Color::from_rgb(200, 200, 230));
+            canvas.draw_char(cx + i as i32 * step, cy, buf[i] as char, Color::from_rgb(220, 220, 220));
         }
     }
 
     fn rect(&self) -> Rect { self.rect }
-    fn min_size(&self) -> (u32, u32) { (100, 40) }
+    fn min_size(&self) -> (u32, u32) { (100, 48) }
 
     fn set_pos(&mut self, x: i32, y: i32) { self.rect.x = x; self.rect.y = y; }
     fn set_size(&mut self, w: u32, h: u32) { self.rect.w = w; self.rect.h = h; }
@@ -104,17 +94,16 @@ impl Widget for TaskBar {
 
         match *ev {
             Event::MouseMove { x, y } => {
-                let lr = Rect::new(abs.x + 6, abs.y + 4, 32, self.rect.h - 8);
-                let new_hover = lr.contains(x, y);
+                let sr = Rect::new(abs.x + 4, abs.y + 4, 48, self.rect.h - 8);
+                let new_hover = sr.contains(x, y);
                 let changed = new_hover != self.launcher_hover;
                 self.launcher_hover = new_hover;
                 if changed { EventResult::Redraw } else { EventResult::Ignored }
             }
             Event::MouseUp { x, y, .. } => {
-                let lr = Rect::new(abs.x + 6, abs.y + 4, 32, self.rect.h - 8);
-                if lr.contains(x, y) {
+                let sr = Rect::new(abs.x + 4, abs.y + 4, 48, self.rect.h - 8);
+                if sr.contains(x, y) {
                     self.show_launcher = !self.show_launcher;
-                    if let Some(cb) = self.on_launcher_click { cb(); }
                     EventResult::Handled
                 } else {
                     EventResult::Ignored
