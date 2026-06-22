@@ -138,6 +138,16 @@ impl Platform {
         unsafe { ffi::zf_reboot() }
     }
 
+    /// Shutdown the system.
+    pub fn shutdown(&self) {
+        unsafe { ffi::zf_shutdown() }
+    }
+
+    /// Set display mode (resolution).
+    pub fn set_mode(&self, width: u32, height: u32) -> i32 {
+        unsafe { ffi::zf_set_mode(width, height) }
+    }
+
     /// Destroy a buffer.
     pub fn destroy_buffer(&self, buf: &mut DisplayBuffer) {
         unsafe { ffi::zf_destroy_buffer(&mut buf.raw) }

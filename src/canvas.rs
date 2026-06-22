@@ -204,6 +204,25 @@ impl Canvas {
         }
     }
 
+    fn glyph_edge_dist(bm: &[u8], col: i32, row: i32, max_d: i32) -> i32 {
+        let mut best = max_d * max_d;
+        for dr in -max_d..=max_d {
+            let nr = row + dr;
+            if nr < 0 || nr >= font::FONT_H as i32 { continue; }
+            for dc in -max_d..=max_d {
+                let nc = col + dc;
+                if nc < 0 || nc >= font::FONT_W as i32 { continue; }
+                let inside = (bm[nr as usize] & (1 << (7 - nc))) != 0;
+                let my_inside = (bm[row as usize] & (1 << (7 - col))) != 0;
+                if inside != my_inside {
+                    let d = dr * dr + dc * dc;
+                    if d < best { best = d; }
+                }
+            }
+        }
+        best
+    }
+
     pub fn draw_char(&mut self, x: i32, y: i32, c: char, color: Color) {
         let bm = font::font_get(c);
         for row in 0..font::FONT_H as i32 {
@@ -215,14 +234,17 @@ impl Canvas {
                 let px = x + col;
                 if px < 0 || px as u32 >= self.width { continue; }
                 if (bits & (1 << (7 - col))) == 0 { continue; }
-                let tl = col > 0 && (bits & (1 << (7 - col + 1))) != 0;
-                let tr = col < (font::FONT_W as i32 - 1) && (bits & (1 << (7 - col - 1))) != 0;
-                let tu = row > 0 && (bm[(row - 1) as usize] & (1 << (7 - col))) != 0;
-                let td = row < (font::FONT_H as i32 - 1) && (bm[(row + 1) as usize] & (1 << (7 - col))) != 0;
-                if tl && tr && tu && td {
+                let dist = Self::glyph_edge_dist(bm, col, row, 3);
+                if dist > 9 {
                     self.set_pixel(px, py, color);
                 } else {
-                    self.blend_pixel(px, py, color, 200);
+                    let alpha = if dist > 0 {
+                        let a = 200 + (55 * dist) / 9;
+                        a.min(255) as u8
+                    } else {
+                        160u8
+                    };
+                    self.blend_pixel(px, py, color, alpha);
                 }
             }
         }
@@ -283,37 +305,26 @@ impl Canvas {
                 let px = x + col;
                 if px < 0 || px as u32 >= self.width { continue; }
 
-                let sx = ((col as f32 + 0.5) / sf - 0.5).clamp(0.0, max_sx);
-                let sy = ((row as f32 + 0.5) / sf - 0.5).clamp(0.0, max_sy);
-
-                let ix = sx as usize;
-                let iy = sy as usize;
-                let fx = sx - ix as f32;
-                let fy = sy - iy as f32;
-
-                let p00 = ((bm[iy] >> (7 - ix)) & 1) as u32;
-                let p10 = if ix + 1 < font::FONT_W as usize { ((bm[iy] >> (7 - ix - 1)) & 1) as u32 } else { p00 };
-                let p01 = if iy + 1 < font::FONT_H as usize { ((bm[iy + 1] >> (7 - ix)) & 1) as u32 } else { p00 };
-                let p11 = if ix + 1 < font::FONT_W as usize && iy + 1 < font::FONT_H as usize
-                    { ((bm[iy + 1] >> (7 - ix - 1)) & 1) as u32 } else { p01 };
-
-                let fx8 = (fx * 256.0) as u32;
-                let fy8 = (fy * 256.0) as u32;
-                let fx8_inv = 256 - fx8;
-                let fy8_inv = 256 - fy8;
-
-                let v = (fx8_inv * fy8_inv * p00
-                       + fx8 * fy8_inv * p10
-                       + fx8_inv * fy8 * p01
-                       + fx8 * fy8 * p11) / 65536;
-
-                if v > 0 {
-                    if v >= 255 {
-                        self.pixels[base + (px as usize)] = color.to_u32();
-                    } else {
-                        let idx = base + (px as usize);
-                        self.pixels[idx] = color.blend(Color::from_u32(self.pixels[idx]), v as u8).to_u32();
+                /* Sub-pixel coverage sampling for smoother scaled fonts */
+                let mut inside = 0u32;
+                let samples = scale as i32;
+                for sub_y in 0..samples {
+                    let sy = ((row * samples + sub_y) as f32 / (samples as f32 * sf)).min(max_sy) as usize;
+                    let bits_row = bm[sy];
+                    for sub_x in 0..samples {
+                        let sx = ((col * samples + sub_x) as f32 / (samples as f32 * sf)).min(max_sx) as usize;
+                        if (bits_row >> (7 - sx)) & 1 != 0 {
+                            inside += 1;
+                        }
                     }
+                }
+
+                let total = (samples * samples) as u32;
+                if inside == total {
+                    self.pixels[base + (px as usize)] = color.to_u32();
+                } else if inside > 0 {
+                    let a = ((inside * 255) / total) as u8;
+                    self.blend_pixel(px, py, color, a);
                 }
             }
         }

@@ -37,6 +37,8 @@ impl MetroStart {
         apps.push(AppInfo { name: "Pong",      color: Color::from_rgb(220, 60, 140) });
         apps.push(AppInfo { name: "Tetris",    color: Color::from_rgb(220, 200, 40) });
         apps.push(AppInfo { name: "Demo",      color: Color::from_rgb(0, 190, 200) });
+        apps.push(AppInfo { name: "Shutdown",  color: Color::from_rgb(200, 40, 40) });
+        apps.push(AppInfo { name: "Reboot",    color: Color::from_rgb(200, 160, 40) });
         Self { open: false, apps, on_launch: None, hover_idx: -1, screen_w: w, screen_h: h }
     }
 
