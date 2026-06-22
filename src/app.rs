@@ -83,14 +83,55 @@ impl App {
     }
 
     fn draw_cursor(&mut self) {
+        const W: i32 = 16;
+        const H: i32 = 16;
+        let bits: [u16; 16] = [
+            0x8000, 0xC000, 0xA000, 0x9000,
+            0x8800, 0x8400, 0x8200, 0x8100,
+            0x8080, 0x8040, 0x8020, 0x8010,
+            0x8008, 0x8808, 0xB8E0, 0xB800,
+        ];
         let cx = self.cursor_x;
         let cy = self.cursor_y;
-        for dy in 0..12 {
-            for dx in 0..12 {
-                if dx == 0 || dy == 0 || dx == dy {
+
+        /* Shadow: offset +1,+1, semi-transparent black */
+        for dy in 0..H - 1 {
+            for dx in 0..W - 1 {
+                if (bits[dy as usize] & (1 << (15 - dx))) != 0
+                    && (bits[(dy + 1) as usize] & (1 << (15 - (dx + 1)))) == 0
+                {
+                    let sx = cx + dx + 1;
+                    let sy = cy + dy + 1;
+                    if sx >= 0 && sx < self.canvas.width as i32
+                        && sy >= 0 && sy < self.canvas.height as i32
+                    {
+                        self.canvas.set_pixel(sx, sy, Color::from_argb(128, 0, 0, 0));
+                    }
+                }
+            }
+        }
+
+        /* Fill (black) + border (white) */
+        for dy in 0..H {
+            for dx in 0..W {
+                if (bits[dy as usize] & (1 << (15 - dx))) != 0 {
                     let px = cx + dx;
                     let py = cy + dy;
-                    let col = if dx < 3 && dy < 3 { Color::WHITE } else { Color::from_u32(0xFF222222) };
+                    if px < 0 || px >= self.canvas.width as i32 { continue; }
+                    if py < 0 || py >= self.canvas.height as i32 { continue; }
+                    let top = dy == 0
+                        || (bits[(dy - 1) as usize] & (1 << (15 - dx))) == 0;
+                    let bottom = dy == H - 1
+                        || (bits[(dy + 1) as usize] & (1 << (15 - dx))) == 0;
+                    let left = dx == 0
+                        || (bits[dy as usize] & (1 << (15 - (dx - 1)))) == 0;
+                    let right = dx == W - 1
+                        || (bits[dy as usize] & (1 << (15 - (dx + 1)))) == 0;
+                    let col = if top || bottom || left || right {
+                        Color::WHITE
+                    } else {
+                        Color::from_u32(0xFF000000)
+                    };
                     self.canvas.set_pixel(px, py, col);
                 }
             }
